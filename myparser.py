@@ -1,10 +1,11 @@
 import argparse
 
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Train Video-based Re-ID',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('--train_txt',help='txt for train dataset')
-    parser.add_argument('--train_info',help='npy for train dataset')
-    parser.add_argument('--test_txt',help='txt for test dataset')
+    parser.add_argument('--train_txt', help='txt for train dataset')
+    parser.add_argument('--train_info', help='npy for train dataset')
+    parser.add_argument('--test_txt', help='txt for test dataset')
     parser.add_argument('--test_info',help='npy for test dataset')
     parser.add_argument('--query_info',help='npy for test dataset')
     parser.add_argument('--lr',type=float,default=0.001,help='learning rate')

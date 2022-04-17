@@ -1,8 +1,9 @@
 from util import utils
 from util.cmc import Video_Cmc
 from net import models
-# import parser
-import argparse
+# from parser import parse_args
+import myparser
+# import argparse
 # import sys
 # import random
 from tqdm import tqdm
@@ -64,6 +65,7 @@ def validation(network, dataloader, args):
 if __name__ == '__main__':
     # Parse args
 
+    """
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--test_txt', help='path/to/MARS_database/test_path.txt')
@@ -78,20 +80,21 @@ if __name__ == '__main__':
     # parser.add_argument('--non_layers', help='path/to/save/database', default=[0, 2, 3, 0])
     parser.add_argument('--load_ckpt', help='path/to/save/database', default='./ckpt/NVAN.pth')
     # parser.add_argument('--stripes', help='path/to/save/database', default=[16, 16, 16, 16])
+    """
 
-    args = parser.parse_args()
+    args = myparser.parse_args()
 
     test_transform = Compose([Resize((256, 128)), ToTensor(), Normalize(mean=[0.485, 0.456, 0.406],
                                                                         std=[0.229, 0.224, 0.225])])
     print('Start dataloader...')
     num_class = 625
     test_dataloader = utils.Get_Video_test_DataLoader(args.test_txt, args.test_info, args.query_info, test_transform,
-                                                      batch_size=int(args.batch_size), shuffle=False,
-                                                      num_workers=int(args.num_workers), S=args.S, distractor=True)
+                                                      batch_size=args.batch_size, shuffle=False,
+                                                      num_workers=args.num_workers, S=args.S, distractor=True)
 
     print('End dataloader...')
 
-    network = nn.DataParallel(models.CNN(int(args.latent_dim), model_type=args.model_type, num_class=num_class,
+    network = nn.DataParallel(models.CNN(args.latent_dim, model_type=args.model_type, num_class=num_class,
                                          # non_layers=args.non_layers, stripes=args.stripes,
                                          non_layers=[0, 2, 3, 0], stripes=[16, 16, 16, 16],
                                          # temporal=args.temporal).cuda())
