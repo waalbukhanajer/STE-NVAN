@@ -1,0 +1,6 @@
+numpy
+Pillow
+progressbar2
+tqdm
+pandas
+scipy

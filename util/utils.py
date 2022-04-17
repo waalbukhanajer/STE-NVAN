@@ -18,42 +18,46 @@ from PIL import Image
 '''
 For MARS,Video-based Re-ID
 '''
+
+
 def process_labels(labels):
     unique_id = np.unique(labels)
     id_count = len(unique_id)
-    id_dict = {ID:i for i, ID in enumerate(unique_id.tolist())}
+    id_dict = {ID: i for i, ID in enumerate(unique_id.tolist())}
     for i in range(len(labels)):
         labels[i] = id_dict[labels[i]]
     assert len(unique_id)-1 == np.max(labels)
-    return labels,id_count
+    return labels, id_count
+
 
 class Video_train_Dataset(Dataset):
-    def __init__(self,db_txt,info,transform,S=6,track_per_class=4,flip_p=0.5,delete_one_cam=False,cam_type='normal'):
-        with open(db_txt,'r') as f:
+    def __init__(self, db_txt, info, transform, S=6, track_per_class=4, flip_p=0.5, delete_one_cam=False,
+                 cam_type='normal'):
+        with open(db_txt, 'r') as f:
             self.imgs = np.array(f.read().strip().split('\n'))
         # For info (id,track)
         if delete_one_cam == True:
             info = np.load(info)
-            info[:,2],id_count = process_labels(info[:,2])
+            info[:, 2], id_count = process_labels(info[:, 2])
             for i in range(id_count):
-                idx = np.where(info[:,2]==i)[0]
-                if len(np.unique(info[idx,3])) ==1:
-                    info = np.delete(info,idx,axis=0)
-                    id_count -=1
-            info[:,2],id_count = process_labels(info[:,2])
+                idx = np.where(info[:, 2] == i)[0]
+                if len(np.unique(info[idx, 3])) == 1:
+                    info = np.delete(info, idx, axis=0)
+                    id_count -= 1
+            info[:, 2], id_count = process_labels(info[:, 2])
             #change from 625 to 619
         else:
             info = np.load(info)
-            info[:,2],id_count = process_labels(info[:,2])
+            info[:, 2], id_count = process_labels(info[:, 2])
 
         self.info = []
         for i in range(len(info)):
             sample_clip = []
-            F = info[i][1]-info[i][0]+1
+            F = info[i][1] - info[i][0] + 1
             if F < S:
-                strip = list(range(info[i][0],info[i][1]+1))+[info[i][1]]*(S-F)
+                strip = list(range(info[i][0], info[i][1] + 1)) + [info[i][1]] * (S-F)
                 for s in range(S):
-                    pool = strip[s*1:(s+1)*1]
+                    pool = strip[s * 1: (s + 1) * 1]
                     sample_clip.append(list(pool))
             else:
                 interval = math.ceil(F/S)
@@ -107,38 +111,44 @@ class Video_train_Dataset(Dataset):
     def __len__(self):
         return self.n_id
 
+
 def Video_train_collate_fn(data):
     if isinstance(data[0],collections.Mapping):
         t_data = [tuple(d.values()) for d in data]
         values = MARS_collate_fn(t_data)
-        return {key:value  for key,value in zip(data[0].keys(),values)}
+        return {key: value for key, value in zip(data[0].keys(), values)}
     else:
         imgs,labels = zip(*data)
         imgs = torch.cat(imgs,dim=0)
         labels = torch.cat(labels,dim=0)
         return imgs,labels
 
-def Get_Video_train_DataLoader(db_txt,info,transform,shuffle=True,num_workers=8,S=10,track_per_class=4,class_per_batch=8):
+
+def Get_Video_train_DataLoader(db_txt, info, transform, shuffle=True, num_workers=8, S=10, track_per_class=4,
+                               class_per_batch=8):
     dataset = Video_train_Dataset(db_txt,info,transform,S,track_per_class)
     dataloader = DataLoader(dataset,batch_size=class_per_batch,collate_fn=Video_train_collate_fn,shuffle=shuffle,worker_init_fn=lambda _:np.random.seed(),drop_last=True,num_workers=num_workers)
     return dataloader
 
+
 class Video_test_Dataset(Dataset):
-    def __init__(self,db_txt,info,query,transform,S=6,distractor=True):
-        with open(db_txt,'r') as f:
+    def __init__(self, db_txt, info, query, transform, S=6, distractor=True):
+        with open(db_txt, 'r') as f:
             self.imgs = np.array(f.read().strip().split('\n'))
         # info
         info = np.load(info)
         self.info = []
         for i in range(len(info)):
-            if distractor == False and info[i][2]==0:
+            if distractor is False and info[i][2] == 0:
                 continue
             sample_clip = []
-            F = info[i][1]-info[i][0]+1
+            F = info[i][1] - info[i][0] + 1
+            S = int(S)
+
             if F < S:
-                strip = list(range(info[i][0],info[i][1]+1))+[info[i][1]]*(S-F)
+                strip = list(range(info[i][0], info[i][1] + 1)) + [info[i][1]] * (S-F)
                 for s in range(S):
-                    pool = strip[s*1:(s+1)*1]
+                    pool = strip[s * 1: (s + 1) * 1]
                     sample_clip.append(list(pool))
             else:
                 interval = math.ceil(F/S)
@@ -190,9 +200,12 @@ def Video_test_collate_fn(data):
         cams = torch.cat(cam,dim=0)
         return imgs,labels,cams
 
-def Get_Video_test_DataLoader(db_txt,info,query,transform,batch_size=10,shuffle=False,num_workers=8,S=6,distractor=True):
-    dataset = Video_test_Dataset(db_txt,info,query,transform,S,distractor=distractor)
-    dataloader = DataLoader(dataset,batch_size=batch_size,collate_fn=Video_test_collate_fn,shuffle=shuffle,worker_init_fn=lambda _:np.random.seed(),num_workers=num_workers)
+
+def Get_Video_test_DataLoader(db_txt, info, query, transform, batch_size=10, shuffle=False, num_workers=8, S=6,
+                              distractor=True):
+    dataset = Video_test_Dataset(db_txt, info, query, transform, S, distractor=distractor)
+    dataloader = DataLoader(dataset, batch_size=batch_size, collate_fn=Video_test_collate_fn, shuffle=shuffle,
+                            worker_init_fn=lambda _: np.random.seed(), num_workers=num_workers)
     return dataloader
 
 

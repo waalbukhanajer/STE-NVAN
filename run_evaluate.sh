@@ -8,8 +8,10 @@ QUERY_INFO=./MARS_database/query_IDX.npy
                           #--batch_size 64 --model_type 'resnet50_s1' --num_workers 8  --S 8 \
                           #--latent_dim 2048 --temporal mean --stride 1 --load_ckpt $LOAD_CKPT 
 #Evaluate NVAN (R50 + 5 NL + FPL)
+# python evaluate.py --test_txt MARS_database\test_path.txt --test_info MARS_database\test_info.npy --query_info MARS_database\query_IDX.npy --batch_size 64 --model_type 'resnet50_NL' --num_workers 8 --S 8 --l
+  #atent_dim 2048 --temporal Done  --non_layers  0 2 3 0 --load_ckpt ckpt\NVAN.pth
 LOAD_CKPT=./ckpt/NVAN.pth
-python3 evaluate.py --test_txt $TEST_TXT  --test_info  $TEST_INFO   --query_info $QUERY_INFO \
+python evaluate.py --test_txt $TEST_TXT --test_info $TEST_INFO --query_info $QUERY_INFO \
                     --batch_size 64 --model_type 'resnet50_NL' --num_workers 8  --S 8 --latent_dim 2048 \
                     --temporal Done  --non_layers  0 2 3 0 --load_ckpt $LOAD_CKPT \
 

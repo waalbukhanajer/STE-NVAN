@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torchvision import models
 import net.resnet as res
 
+
 def weights_init_kaiming(m):
     classname = m.__class__.__name__
     if classname.find('Linear') != -1:
@@ -18,6 +19,7 @@ def weights_init_kaiming(m):
             nn.init.constant_(m.weight, 1.0)
             nn.init.constant_(m.bias, 0.0)
 
+
 def weights_init_classifier(m):
     classname = m.__class__.__name__
     if classname.find('Linear') != -1:
@@ -27,8 +29,8 @@ def weights_init_classifier(m):
 
 
 class Resnet50_NL(nn.Module):
-    def __init__(self,non_layers=[0,1,1,1],stripes=[16,16,16,16],non_type='normal',temporal=None):
-        super(Resnet50_NL,self).__init__()
+    def __init__(self, non_layers=[0, 1, 1, 1], stripes=[16, 16, 16, 16],non_type='normal',temporal=None):
+        super(Resnet50_NL, self).__init__()
         original = models.resnet50(pretrained=True).state_dict()
         if non_type == 'normal':
             self.backbone = res.ResNet_Video_nonlocal(last_stride=1,non_layers=non_layers)
@@ -57,8 +59,8 @@ class Resnet50_NL(nn.Module):
 
 
 class Resnet50_s1(nn.Module):
-    def __init__(self,pooling=True,stride=1):
-        super(Resnet50_s1,self).__init__()
+    def __init__(self, pooling=True, stride=1):
+        super(Resnet50_s1, self).__init__()
         original = models.resnet50(pretrained=True).state_dict()
         self.backbone = res.ResNet(last_stride=stride)
         for key in original:
@@ -66,63 +68,66 @@ class Resnet50_s1(nn.Module):
                 continue
             self.backbone.state_dict()[key].copy_(original[key])
         del original
-        if pooling == True:
-            self.add_module('avgpool',nn.AdaptiveAvgPool2d(1))
+        if pooling:
+            self.add_module('avgpool', nn.AdaptiveAvgPool2d(1))
         else:
             self.avgpool = None
 
         self.out_dim = 2048
 
-    def forward(self,x):
+    def forward(self, x):
         x = self.backbone(x)
         if self.avgpool is not None:
             x = self.avgpool(x)
-            x = x.view(x.shape[0],-1)
+            x = x.view(x.shape[0], -1)
         return x
 
+
 class CNN(nn.Module):
-    def __init__(self,out_dim,model_type='resnet50_s1',num_class=710,non_layers=[1,2,2],stripes=[16,16,16,16], temporal = 'Done',stride=1):
-        super(CNN,self).__init__()
+    def __init__(self, out_dim, model_type='resnet50_s1', num_class=710, non_layers=[1, 2, 2], stripes=[16, 16, 16, 16],
+                 temporal='Done', stride=1):
+        super(CNN, self).__init__()
         self.model_type = model_type
         if model_type == 'resnet50_s1':
             self.features = Resnet50_s1(stride=stride)
         elif model_type == 'resnet50_NL':
-            self.features = Resnet50_NL(non_layers=non_layers,temporal=temporal,non_type='normal')
+            self.features = Resnet50_NL(non_layers=non_layers, temporal=temporal, non_type='normal')
         elif model_type == 'resnet50_NL_stripe':
-            self.features = Resnet50_NL(non_layers=non_layers,stripes=stripes,temporal=temporal,non_type='stripe')
+            self.features = Resnet50_NL(non_layers=non_layers, stripes=stripes, temporal=temporal, non_type='stripe')
         elif model_type == 'resnet50_NL_hr':
-            self.features = Resnet50_NL(non_layers=non_layers,stripes=stripes,temporal=temporal,non_type='hr')
+            self.features = Resnet50_NL(non_layers=non_layers, stripes=stripes, temporal=temporal, non_type='hr')
         elif model_type == 'resnet50_NL_stripe_hr':
-            self.features = Resnet50_NL(non_layers=non_layers,stripes=stripes,temporal=temporal,non_type='stripe_hr')
+            self.features = Resnet50_NL(non_layers=non_layers, stripes=stripes, temporal=temporal, non_type='stripe_hr')
 
         self.bottleneck = nn.BatchNorm1d(out_dim)
         self.bottleneck.bias.requires_grad_(False)  # no shift
         self.bottleneck.apply(weights_init_kaiming)
 
-        self.classifier = nn.Linear(out_dim,num_class, bias=False)
+        self.classifier = nn.Linear(out_dim, num_class, bias=False)
         self.classifier.apply(weights_init_classifier)
 
-    def forward(self,x,seg=None):
+    def forward(self, x, seg=None):
         if self.model_type == 'resnet50_s1':
             x = self.features(x)
             bn = self.bottleneck(x)
-            if self.training == True:
+            if self.training:
                 output = self.classifier(bn)
-                return x,output
+                return x, output
             else:
                 return bn
         elif self.model_type == 'resnet50_NL' or self.model_type == 'resnet50_NL_stripe' or \
-            self.model_type=='resnet50_NL_hr' or self.model_type == 'resnet50_NL_stripe_hr':
+            self.model_type == 'resnet50_NL_hr' or self.model_type == 'resnet50_NL_stripe_hr':
             x = self.features(x)
             bn = self.bottleneck(x)
-            if self.training == True:
+            if self.training:
                 output = self.classifier(bn)
                 return x,output
             else:
                 return bn
 
+
 if __name__ == '__main__':
     model = Resnet50_s1()
-    input = torch.ones(1,3,256,128)
+    input = torch.ones(1, 3, 256, 128)
     output = model(input)
     print(output.shape)
